@@ -1,6 +1,7 @@
+from loguru import logger
 from functools import lru_cache
-from typing import Optional
-from pydantic import BaseSettings, Field
+from typing import Optional, List, Any
+from pydantic import BaseSettings, Field, HttpUrl, BaseModel
 
 # Environment
 from app.schemas import GenericSchema
@@ -50,6 +51,20 @@ class PostgresConfiguration(BaseSettings):
     db: str = Field(env="POSTGRES_DB")
 
 
+# Line login
+class LineLoginConfiguration(BaseModel):
+    auth_url: HttpUrl
+    access_token_url: HttpUrl = Field(..., description="Get access token url")
+    scopes: List[str]
+
+
+# Line Notify
+class LineNotifyConfiguration(BaseModel):
+    auth_url: HttpUrl
+    access_token_url: HttpUrl = Field(..., description="Get access token url")
+    scopes: List[str]
+
+
 class Settings(BaseSettings):
     # Application
     app: Application = Application()
@@ -65,6 +80,12 @@ class Settings(BaseSettings):
 
     # Redis
     redis: RedisConfiguration = RedisConfiguration()
+
+    # Line Login
+    line_login: LineLoginConfiguration
+
+    # Line Notify
+    line_notify: LineNotifyConfiguration
 
 
 @lru_cache(maxsize=50)

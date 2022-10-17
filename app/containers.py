@@ -25,6 +25,12 @@ class Service(containers.DeclarativeContainer):
         log_path=config.app.log_path,
     )
 
+    async_request_client = providers.Resource(services.AsyncRequestClient)
+
+    async_request_handler = providers.Singleton(
+        services.AsyncRequestHandler, request_client=async_request_client
+    )
+
     # * Model Repositories *#
     user_repo = providers.Singleton(
         repositories.UserRepo,

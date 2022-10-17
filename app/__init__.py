@@ -2,7 +2,7 @@
 #   Application Metadata
 #######
 __VERSION__ = "0.0.1"
-__TITLE__ = "OAuth2Demo"
+__TITLE__ = "OAuth2-Workshop"
 __DESCRIPTION__ = "OAuth2.0 course homework"
 __DOCS_URL__ = None
 __ROOT_PATH__ = "/api/v1"
@@ -13,6 +13,9 @@ from loguru import logger
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from tortoise.exceptions import DoesNotExist, IntegrityError
+from aiohttp.client_exceptions import ClientError
+from asyncio.exceptions import TimeoutError
 
 # Settings
 from app import exceptions
@@ -22,14 +25,6 @@ from app.config import settings
 def add_sentry_middleware(app: FastAPI, *, release_name: str) -> None:
     from app.middleware import CustomSentryAsgiMiddleware
 
-    def before_send(event, hint):
-        if "exc_info" in hint:
-            exc_type, exc_value, tb = hint["exc_info"]
-            if isinstance(exc_value, ValueError):
-                logger.warning(f"Exception: {exc_type} - Value: {exc_value}")
-                return None
-        return event
-
     # Initial sentry and add middleware
     logger.info("--- Initial Sentry ---")
     sentry_sdk.init(
@@ -37,7 +32,6 @@ def add_sentry_middleware(app: FastAPI, *, release_name: str) -> None:
         traces_sample_rate=settings.sentry.trace_sample_rates,
         release=f"{release_name}@{__VERSION__}",
         environment=settings.app.env_mode.value,
-        before_send=before_send,
     )
     app.add_middleware(CustomSentryAsgiMiddleware)
 
@@ -57,7 +51,20 @@ def add_log_middleware(app: FastAPI) -> None:
 
 # Exceptions
 def add_exceptions(app: FastAPI) -> None:
-    from tortoise.exceptions import DoesNotExist, IntegrityError
+    @app.exception_handler(TimeoutError)
+    async def asyncio_timeouterror_handler(request: Request, exc: TimeoutError):
+        return JSONResponse(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            content={"detail": "timeout error"},
+        )
+
+    @app.exception_handler(ClientError)
+    async def aiohttp_client_exception_handler(request: Request, exc: ClientError):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": str(exc)},
+            headers={"X-Error": str(exc)},
+        )
 
     @app.exception_handler(DoesNotExist)
     async def doesnotexist_exception_handler(request: Request, exc: DoesNotExist):
@@ -79,7 +86,7 @@ def add_exceptions(app: FastAPI) -> None:
     ):
         _error_message = str(exc.error_message)
         return JSONResponse(
-            status_code=status.HTTP_418_IM_A_TEAPOT,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": str(exc)},
             headers={"X-Error": _error_message},
         )
@@ -91,7 +98,7 @@ def create_app() -> FastAPI:
         description=__DESCRIPTION__,
         version=__VERSION__,
         docs_url=__DOCS_URL__,
-        # root_path=__ROOT_PATH__,
+        root_path=__ROOT_PATH__,
     )
 
     # Routers
@@ -101,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(routers.authentication_router)
     app.include_router(routers.user_router)
     app.include_router(routers.view_router)
+    app.include_router(routers.line_router)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
@@ -110,7 +118,9 @@ def create_app() -> FastAPI:
 
     container = Application()
     container.config.from_pydantic(settings)
-    container.wire(modules=[sys.modules[__name__], security, routers.auth])
+    container.wire(
+        modules=[sys.modules[__name__], security, routers.auth, routers.line]
+    )
 
     app.container = container
 
