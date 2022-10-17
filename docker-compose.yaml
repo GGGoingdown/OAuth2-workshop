@@ -1,0 +1,54 @@
+version: "3.9"
+services:
+  app:
+    container_name: app
+    build:
+      context: .
+    volumes:
+      - .:/app/
+      - ./log/application:${APPLICATION_LOG_PATH:-/var/log/application}
+    restart: unless-stopped
+    ports:
+      - ${APPLICATION_EXPOSE:-8000}:8000
+    expose:
+      - ${APPLICATION_EXPOSE:-8000}
+    env_file:
+      - ./env/.dev.env
+    environment:
+      - MIGRATION=${MIGRATION?Variable not set}
+      - CREATE_INIT_DATA=${CREATE_INIT_DATA?Variable not set}
+      - APPLICATION_ENVIRONMENT=${APPLICATION_ENVIRONMENT?Variable not set}
+    command:
+      [
+        "./script/service_entrypoint.sh",
+        "uvicorn",
+        "app.main:app",
+        "--host=0.0.0.0",
+        "--port=8000",
+        "--reload"
+      ]
+
+  db:
+    container_name: db
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USERNAME?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - ${POSTGRES_EXPOSE:-5432}:5432
+    expose:
+      - ${POSTGRES_EXPOSE:-5432}
+
+  cache:
+    container_name: cache
+    image: redis:6.2
+    ports:
+      - ${REDIS_EXPOSE:-6379}:6379
+    expose:
+      - ${REDIS_EXPOSE:-6379}
+    restart: unless-stopped
+    command: >
+      --requirepass ${REDIS_PASSWORD?Variable not set}
