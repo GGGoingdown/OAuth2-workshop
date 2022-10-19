@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    >
+    <meta
+        name="description"
+        content=""
+    >
+    <meta
+        name="author"
+        content=""
+    >
+
+    <script src="{{ url_for('static', path='/assets/js/jquery.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
+
+    <link
+        href="{{ url_for('static', path='/assets/css/bootstrap.min.css') }}"
+        rel="stylesheet"
+    >
+    <link
+        href="{{ url_for('static', path='/assets/css/font-awesome.min.css') }}"
+        rel="stylesheet"
+    >
+    <link
+        href="{{ url_for('static', path='/assets/css/style.css') }}"
+        rel="stylesheet"
+    >
+
+
+    <title>Index</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <a
+            class="navbar-brand"
+            id="logoutBtn"
+            href="#"
+        >Logout</a>
+    </nav>
+</body>
+<script>
+    $(document).ready(function () {
+        $("#logoutBtn").click(function () {
+            if (confirm('Are you sure you want to log-off?')) {
+                // Save it!
+                console.log('logout');
+                window.location.href = '{{ url_for( "login") }}';
+            } else {
+                // Do nothing!
+                console.log('nothing to do');
+            }
+        });
+    })
+</script>
+
+</html>
