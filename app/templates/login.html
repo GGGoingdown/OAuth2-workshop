@@ -3,34 +3,16 @@
 
 <head>
   <meta charset="utf-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, shrink-to-fit=no"
-  >
-  <meta
-    name="description"
-    content=""
-  >
-  <meta
-    name="author"
-    content=""
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
 
   <script src="{{ url_for('static', path='/assets/js/jquery.min.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
 
-  <link
-    href="{{ url_for('static', path='/assets/css/bootstrap.min.css') }}"
-    rel="stylesheet"
-  >
-  <link
-    href="{{ url_for('static', path='/assets/css/font-awesome.min.css') }}"
-    rel="stylesheet"
-  >
-  <link
-    href="{{ url_for('static', path='/assets/css/style.css') }}"
-    rel="stylesheet"
-  >
+  <link href="{{ url_for('static', path='/assets/css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='/assets/css/font-awesome.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='/assets/css/style.css') }}" rel="stylesheet">
 
 
   <title>Educational Bootstrap 5 Login Page Website Tampalte</title>
@@ -47,27 +29,13 @@
                 <img src="{{ url_for('static', path='/assets/images/user.png') }}">
               </div>
               <div class="form-group">
-                <input
-                  type="email"
-                  name="email"
-                  class="form-control _ge_de_ol"
-                  type="text"
-                  placeholder="Enter Email"
-                  required=""
-                  aria-required="true"
-                >
+                <input type="email" name="email" class="form-control _ge_de_ol" type="text" placeholder="Enter Email"
+                  required="" aria-required="true">
               </div>
 
               <div class="form-group">
-                <input
-                  type="password"
-                  name="password"
-                  class="form-control _ge_de_ol"
-                  type="text"
-                  placeholder="Enter Password"
-                  required=""
-                  aria-required="true"
-                >
+                <input type="password" name="password" class="form-control _ge_de_ol" type="text"
+                  placeholder="Enter Password" required="" aria-required="true">
               </div>
 
 
@@ -85,18 +53,9 @@
                 <div class="_social_04">
                   <ol>
 
-                    <li><a
-                        class="fa fa-google-plus"
-                        href="https://google.com"
-                      ></a></li>
-                    <li><a
-                        class="fa fa-instagram"
-                        href="https://google.com"
-                      ></a></li>
-                    <li><a
-                        class="fa fa-phone-square"
-                        href="https://google.com"
-                      ></a></li>
+                    <li><a class="fa fa-google-plus" href="https://google.com"></a></li>
+                    <li><a class="fa fa-instagram" href="https://google.com"></a></li>
+                    <li><a class="fa fa-phone-square" href="{{ url_for('line_authorization_url' )}}"></a></li>
                   </ol>
                 </div>
               </div>

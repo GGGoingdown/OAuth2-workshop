@@ -51,18 +51,23 @@ class PostgresConfiguration(BaseSettings):
     db: str = Field(env="POSTGRES_DB")
 
 
-# Line login
-class LineLoginConfiguration(BaseModel):
+class BaseOAuth2Configuration(BaseModel):
+    client_id: str
+    client_secret: str
     auth_url: HttpUrl
     access_token_url: HttpUrl = Field(..., description="Get access token url")
     scopes: List[str]
+    redirect_url: HttpUrl
+
+
+# Line login
+class LineLoginConfiguration(BaseOAuth2Configuration):
+    ...
 
 
 # Line Notify
-class LineNotifyConfiguration(BaseModel):
-    auth_url: HttpUrl
-    access_token_url: HttpUrl = Field(..., description="Get access token url")
-    scopes: List[str]
+class LineNotifyConfiguration(BaseOAuth2Configuration):
+    ...
 
 
 class Settings(BaseSettings):

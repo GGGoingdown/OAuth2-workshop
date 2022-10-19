@@ -1,13 +1,16 @@
+import urllib
 from loguru import logger
-from fastapi import HTTPException, status
-from fastapi.security import SecurityScopes
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Any, Union, List
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from fastapi import HTTPException, status
+from fastapi.security import SecurityScopes
 
 ###
 from app import utils, repositories
+from app.config import LineLoginConfiguration, LineNotifyConfiguration
+from app.services.httpx import AsyncRequestHandler
 from app.schemas import AuthSchema, UserSchema
 
 
@@ -156,3 +159,61 @@ class AuthorizationService(BaseAuthService):
         expried_dt = self._auth_selector.jwt.create_expired_time()
         payload.update({"exp": expried_dt})
         return self._auth_selector.jwt.encode(payload)
+
+
+###
+# OAuth2
+###
+class BaseLineOAuth2Manager:
+    def __init__(
+        self, config: Union[LineLoginConfiguration, LineNotifyConfiguration]
+    ) -> None:
+        self._config = config
+        logger.info(config)
+        self.auth_url = self._create_auth_url()
+        self.access_token_url = self._config.access_token_url
+        self.access_token_headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+    def _create_auth_url(self) -> str:
+        schema = AuthSchema.BaseOAuthQueryString(
+            response_type="code",
+            client_id=self._config.client_id,
+            redirect_uri=self._config.redirect_url,
+            state=utils.get_shortuuid(),
+            scope=self._config.scopes,
+        ).dict(exclude={"scope"})
+        query = urllib.parse.urlencode(schema)
+        scope_query = urllib.parse.quote(" ".join(self._config.scopes))
+        return f"{self._config.auth_url}?{query}&scope={scope_query}"
+
+    def create_access_token_payload(
+        self, code: str
+    ) -> AuthSchema.LineOAuthAccessTokenSchema:
+        return AuthSchema.LineOAuthAccessTokenSchema(
+            code=code,
+            client_id=self._config.client_id,
+            client_secret=self._config.client_secret,
+            redirect_uri=self._config.redirect_url
+        )
+
+    def jwt_decode(self, token: str ) -> AuthSchema.LineOAuthIDTokenSchema:
+        try:
+            decoded = jwt.decode(token, key=None, options={"verify_signature": False}, audience=self._config.client_id)
+            return AuthSchema.LineOAuthIDTokenSchema(
+                **decoded
+            )
+        except JWTError as e:
+            raise ValueError(e)
+
+
+
+class LineLoginOAuth2Manager(BaseLineOAuth2Manager):
+    def __init__(self, config: Dict):
+        super().__init__(config=LineLoginConfiguration(**config))
+
+
+class LineNotifyOAuth2Manager(BaseLineOAuth2Manager):
+    def __init__(self, config: Dict):
+        super().__init__(config=LineNotifyConfiguration(**config))

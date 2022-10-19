@@ -5,7 +5,7 @@ __VERSION__ = "0.0.1"
 __TITLE__ = "OAuth2-Workshop"
 __DESCRIPTION__ = "OAuth2.0 course homework"
 __DOCS_URL__ = None
-__ROOT_PATH__ = "/api/v1"
+__ROOT_PATH__ = ""
 ################################################
 import sys
 import sentry_sdk
@@ -13,9 +13,6 @@ from loguru import logger
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from tortoise.exceptions import DoesNotExist, IntegrityError
-from aiohttp.client_exceptions import ClientError
-from asyncio.exceptions import TimeoutError
 
 # Settings
 from app import exceptions
@@ -51,6 +48,11 @@ def add_log_middleware(app: FastAPI) -> None:
 
 # Exceptions
 def add_exceptions(app: FastAPI) -> None:
+    from tortoise.exceptions import DoesNotExist, IntegrityError
+    from aiohttp.client_exceptions import ClientError
+    from asyncio.exceptions import TimeoutError
+
+
     @app.exception_handler(TimeoutError)
     async def asyncio_timeouterror_handler(request: Request, exc: TimeoutError):
         return JSONResponse(

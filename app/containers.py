@@ -59,6 +59,13 @@ class Service(containers.DeclarativeContainer):
         auth_selector=authencation_seletor,
     )
 
+    line_login_manager = providers.Singleton(
+        services.LineLoginOAuth2Manager, config=config.line_login
+    )
+    line_notify_manager = providers.Singleton(
+        services.LineNotifyOAuth2Manager, config=config.line_notify
+    )
+
     # * User Service *#
     user_service = providers.Singleton(services.UserService, user_repo=user_repo)
 
@@ -66,4 +73,4 @@ class Service(containers.DeclarativeContainer):
 class Application(containers.DeclarativeContainer):
     config = providers.Configuration()
     gateway = providers.Container(Gateway, config=config)
-    service = providers.Container(Service, config=config, gateway=gateway)
+    service: Service = providers.Container(Service, config=config, gateway=gateway)
