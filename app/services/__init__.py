@@ -5,7 +5,7 @@ from .auth import (  # noqa: F401
     AuthenticationSelector,
     JWTHandler,
     LineLoginOAuth2Manager,
-    LineNotifyOAuth2Manager
+    LineNotifyOAuth2Manager,
 )
 from .user import UserService  # noqa: F401
-from .httpx import AsyncRequestClient, AsyncRequestHandler # noqa: F401
+from .httpx import AsyncRequestClient, AsyncRequestHandler  # noqa: F401

@@ -52,7 +52,6 @@ def add_exceptions(app: FastAPI) -> None:
     from aiohttp.client_exceptions import ClientError
     from asyncio.exceptions import TimeoutError
 
-
     @app.exception_handler(TimeoutError)
     async def asyncio_timeouterror_handler(request: Request, exc: TimeoutError):
         return JSONResponse(

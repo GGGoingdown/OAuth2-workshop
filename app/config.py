@@ -62,12 +62,14 @@ class BaseOAuth2Configuration(BaseModel):
 
 # Line login
 class LineLoginConfiguration(BaseOAuth2Configuration):
-    ...
+    verify_url: HttpUrl = Field(default="https://api.line.me/oauth2/v2.1/verify")
 
 
 # Line Notify
 class LineNotifyConfiguration(BaseOAuth2Configuration):
-    ...
+    notify_url: HttpUrl = Field(default="https://notify-api.line.me/api/notify")
+    get_status_url: HttpUrl = Field(default="https://notify-api.line.me/api/status")
+    revoke_url: HttpUrl = Field(default="https://notify-api.line.me/api/revoke")
 
 
 class Settings(BaseSettings):
