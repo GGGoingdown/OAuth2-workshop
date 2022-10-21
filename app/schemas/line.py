@@ -1,4 +1,5 @@
-from pydantic import BaseModel, HttpUrl, Field, EmailStr
+from pydantic import BaseModel, HttpUrl, Field, EmailStr, validator
+from datetime import datetime
 from typing import Optional, List
 from enum import Enum
 
@@ -46,7 +47,7 @@ class NotifyAccessTokenResponse(BaseModel):
 
 class BaseTokenResponse(BaseModel):
     access_token: str = Field(..., description="Access token. Valid for 30 days")
-    expires_in: str = Field(
+    expires_in: datetime = Field(
         ..., description="Number of seconds until the access token expires"
     )
     refresh_token: str = Field(
@@ -56,6 +57,11 @@ class BaseTokenResponse(BaseModel):
     scope: str = Field(..., description="Permissions granted to the access token")
     token_type: str = Field(default="Bearer")
 
+    @validator("expires_in", pre=True)
+    def seconds_to_datetime(cls, v) -> datetime:
+        # seconds to datetime
+        return datetime.fromtimestamp(v)
+
 
 class LoginAccessTokenResponse(BaseTokenResponse):
     id_token: str = Field(..., description="JWT with information about the user")
@@ -63,16 +69,11 @@ class LoginAccessTokenResponse(BaseTokenResponse):
 
 class IDTokenSchema(BaseModel):
     iss: str = Field(..., description="URL where the ID token is generated")
-    user_id: str = Field(
-        ..., alias="sub", description="User ID for which the ID token is generated"
-    )
+    sub: str = Field(..., description="User ID for which the ID token is generated")
     aud: str = Field(..., description="Channel ID [Client ID]")
     exp: int = Field(..., description="The expiry date of the ID token in UNIX time")
     iat: int = Field(
         ..., description="Time when the ID token was generated in UNIX time"
-    )
-    auth_time: int = Field(
-        ..., description="Time when the user was authenticated in UNIX time"
     )
     nonce: Optional[str] = Field(
         None,
@@ -156,3 +157,4 @@ class NotifyRevokeResponse(BaseModel):
         ...,
         description="200: Success・Access token valid;401: Invalid access token;Other: Processed over time or stopped",
     )
+

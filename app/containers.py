@@ -36,6 +36,12 @@ class Service(containers.DeclarativeContainer):
         repositories.UserRepo,
     )
 
+    line_login_repo = providers.Singleton(repositories.LineLoginRepo)
+
+    line_notify_repo = providers.Singleton(repositories.LineNotifyRepo)
+
+    line_notify_record_repo = providers.Singleton(repositories.LineNotifyRecordRepo)
+
     # * Auth Services *#
     jwt_handler = providers.Singleton(
         services.JWTHandler,
@@ -67,7 +73,32 @@ class Service(containers.DeclarativeContainer):
     )
 
     # * User Service *#
-    user_service = providers.Singleton(services.UserService, user_repo=user_repo)
+    user_cache = providers.Singleton(
+        services.UserCache, redis_client=gateway.redis_client
+    )
+    user_service = providers.Singleton(
+        services.UserService, user_repo=user_repo, user_cache=user_cache
+    )
+
+    line_login_api_handler = providers.Singleton(
+        services.LineLoginAPIHandler, request_handler=async_request_handler
+    )
+
+    line_notify_api_handler = providers.Singleton(
+        services.LineNotifyAPIHandler, request_handler=async_request_handler
+    )
+
+    line_cache = providers.Singleton(
+        services.LineCache, redis_client=gateway.redis_client
+    )
+
+    line_service = providers.Singleton(
+        services.LineService,
+        line_cache=line_cache,
+        line_login_repo=line_login_repo,
+        line_notify_repo=line_notify_repo,
+        line_notify_record_repo=line_notify_record_repo,
+    )
 
 
 class Application(containers.DeclarativeContainer):

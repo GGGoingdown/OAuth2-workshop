@@ -1,4 +1,4 @@
-from typing import Tuple, Any, Dict
+from typing import Callable, Tuple, Any, Dict
 from loguru import logger
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp_retry import RetryClient, ExponentialRetry
@@ -30,30 +30,28 @@ class AsyncRequestClient(resources.AsyncResource):
 class AsyncRequestHandler:
     def __init__(self, request_client: RetryClient) -> None:
         self._request_client = request_client
+        self._http_method: Dict = {
+            "GET": self._request_client.get,
+            "POST": self._request_client.post,
+            "PATCH": self._request_client.patch,
+        }
+
+    async def _request(
+        self, method: Callable, url: str, **kwargs: Any
+    ) -> Tuple[int, Dict]:
+        async with method(url, **kwargs) as response:
+            status_code = response.status
+            if status_code in RAISE_STATUS:
+                return status_code, {"detail": "outside server crash"}
+            rsp_json = await response.json()
+
+        return status_code, rsp_json
 
     async def get(self, url: str, **kwargs: Any) -> Tuple[int, Dict]:
-        async with self._request_client.get(url, **kwargs) as response:
-            status_code = response.status
-            if status_code in RAISE_STATUS:
-                return status_code, {"detail": "outside server crash"}
-            rsp_text = await response.json()
-
-        return status_code, rsp_text
+        return await self._request(self._http_method["GET"], url=url, **kwargs)
 
     async def post(self, url: str, **kwargs: Any) -> Tuple[int, Dict]:
-        async with self._request_client.post(url, **kwargs) as response:
-            status_code = response.status
-            if status_code in RAISE_STATUS:
-                return status_code, {"detail": "outside server crash"}
-            rsp_text = await response.json()
-
-        return status_code, rsp_text
+        return await self._request(self._http_method["POST"], url=url, **kwargs)
 
     async def patch(self, url: str, **kwargs: Any) -> Tuple[int, Dict]:
-        async with self._request_client.patch(url, **kwargs) as response:
-            status_code = response.status
-            if status_code in RAISE_STATUS:
-                return status_code, {"detail": "outside server crash"}
-            rsp_text = await response.json()
-
-        return status_code, rsp_text
+        return await self._request(self._http_method["PATCH"], url=url, **kwargs)

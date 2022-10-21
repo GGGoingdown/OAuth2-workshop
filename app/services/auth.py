@@ -1,16 +1,17 @@
 import urllib
+import abc
 from loguru import logger
-from abc import ABC, abstractmethod
-from functools import cached_property
-from typing import Dict, Iterable, Any, Union, List, TypeVar, Generic
+from functools import lru_cache, cached_property
+from typing import Dict, Iterable, TypeVar, Generic, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from fastapi.security import SecurityScopes
+from pydantic import ValidationError
 
 ###
-from app import utils, repositories
+from app import utils, repositories, exceptions
 from app.config import (
     BaseOAuth2Configuration,
     LineLoginConfiguration,
@@ -172,91 +173,95 @@ class AuthorizationService(BaseAuthService):
 ###
 # OAuth2
 ###
-class BaseOAuth2Manager(Generic[T], ABC):
+class BaseOAuth2Manager(Generic[T], abc.ABC):
     def __init__(self, config: BaseOAuth2Configuration) -> None:
         self._config = config
-        self.base_headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-    def _create_auth_url(self) -> str:
+    def _create_auth_url(self, state: Optional[str] = None) -> str:
         schema = AuthSchema.BaseOAuthQueryString(
             response_type="code",
             client_id=self._config.client_id,
             redirect_uri=self._config.redirect_url,
-            state=utils.get_shortuuid(),
+            state=state if state else utils.get_shortuuid(),
             scope=self._config.scopes,
         ).dict(exclude={"scope"})
         query = urllib.parse.urlencode(schema)
         scope_query = urllib.parse.quote(" ".join(self._config.scopes))
         return f"{self._config.auth_url}?{query}&scope={scope_query}"
 
-    @property
-    @abstractmethod
-    def auth_url(
-        self,
-    ) -> str:
+    @abc.abstractmethod
+    def auth_url(self, state: Optional[str] = None) -> str:
         ...
 
     @property
-    @abstractmethod
+    @abc.abstractmethod
     def access_token_url(self) -> str:
         ...
 
-    @abstractmethod
-    def create_access_token_schema(self, *args, **kwargs) -> T:
+    @abc.abstractmethod
+    def create_access_token_schema(self, code: str) -> T:
         ...
-
-    # def create_access_token_payload(
-    #     self, code: str
-    # ) -> AuthSchema.LineOAuthAccessTokenSchema:
-    #     return AuthSchema.LineOAuthAccessTokenSchema(
-    #         code=code,
-    #         client_id=self._config.client_id,
-    #         client_secret=self._config.client_secret,
-    #         redirect_uri=self._config.redirect_url,
-    #     )
-
-    # def jwt_decode(self, token: str) -> AuthSchema.LineOAuthIDTokenSchema:
-    #     try:
-    #         decoded = jwt.decode(
-    #             token,
-    #             key=None,
-    #             options={"verify_signature": False},
-    #             audience=self._config.client_id,
-    #         )
-    #         return AuthSchema.LineOAuthIDTokenSchema(**decoded)
-    #     except JWTError as e:
-    #         raise ValueError(e)
 
 
 class LineLoginOAuth2Manager(BaseOAuth2Manager):
     def __init__(self, config: Dict):
         super().__init__(config=LineLoginConfiguration(**config))
 
-    @cached_property
-    def auth_url(self) -> str:
-        return super()._create_auth_url()
+    @lru_cache(maxsize=64)
+    def auth_url(self, state: Optional[str] = None) -> str:
+        return super()._create_auth_url(state=state)
 
     @cached_property
     def access_token_url(self) -> str:
         return self._config.access_token_url
 
     def create_access_token_schema(
-        self, *args: Any, **kwargs: Any
+        self,
+        code: str,
     ) -> LineSchema.LoginAccessTokenSchema:
-        ...
+        return LineSchema.LoginAccessTokenSchema(
+            grant_type=LineSchema.GrantTypeEnum.authorization_code,
+            code=code,
+            client_id=self._config.client_id,
+            client_secret=self._config.client_secret,
+            redirect_uri=self._config.redirect_url,
+        )
+
+    def jwt_decode(self, token: str) -> LineSchema.IDTokenSchema:
+        try:
+            decoded = jwt.decode(
+                token,
+                key=self._config.client_secret,
+                options={"verify_signature": False},
+                audience=self._config.client_id,
+            )
+            return LineSchema.IDTokenSchema(**decoded)
+        except JWTError as e:
+            raise exceptions.LineAuthJWTException(message=e)
+
+        except ValidationError as e:
+            raise exceptions.LineSchemaValidationException(message=e)
 
 
 class LineNotifyOAuth2Manager(BaseOAuth2Manager):
     def __init__(self, config: Dict):
         super().__init__(config=LineNotifyConfiguration(**config))
 
-    @cached_property
-    def auth_url(self) -> str:
-        return super()._create_auth_url()
+    @lru_cache(maxsize=64)
+    def auth_url(self, state: str) -> str:
+        return super()._create_auth_url(state=state)
 
     @cached_property
     def access_token_url(self) -> str:
         return self._config.access_token_url
 
-    def create_access_token_schema(self, code) -> LineSchema.NotifyAccessTokenSchema:
-        ...
+    def create_access_token_schema(
+        self, code: str
+    ) -> LineSchema.NotifyAccessTokenSchema:
+        return LineSchema.NotifyAccessTokenSchema(
+            grant_type=LineSchema.GrantTypeEnum.authorization_code,
+            client_id=self._config.client_id,
+            client_secret=self._config.client_secret,
+            code=code,
+            redirect_uri=self._config.redirect_url,
+        )

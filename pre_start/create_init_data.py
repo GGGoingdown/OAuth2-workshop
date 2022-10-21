@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 
 ###
-from app import models  # noqa: E402
+from app import models, utils  # noqa: E402
 from app.schemas import UserSchema  # noqa: E402
 from app.services.auth import BaseAuthService  # noqa: E402
 
@@ -34,6 +34,7 @@ async def create_user(user_payload: UserSchema.CreateUser):
         logger.info("--- Create user ---")
         password_hash = BaseAuthService.get_password_hash(user_payload.password)
         user_model = models.User(
+            create_at=utils.get_utc_now(),
             password_hash=password_hash,
             **user_payload.dict(exclude={"password", "verify_password"}),
         )

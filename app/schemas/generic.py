@@ -22,3 +22,15 @@ class EnvironmentMode(str, Enum):
 
 class DetailResponse(BaseModel):
     detail: str
+
+
+class URLResponse(BaseModel):
+    url: str
+
+
+class AccessTokenResponse(BaseModel):
+    access_token: str
+
+
+class StatusResponse(BaseModel):
+    status: bool

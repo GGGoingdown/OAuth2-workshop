@@ -13,6 +13,7 @@ from loguru import logger
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 # Settings
 from app import exceptions
@@ -52,6 +53,18 @@ def add_exceptions(app: FastAPI) -> None:
     from aiohttp.client_exceptions import ClientError
     from asyncio.exceptions import TimeoutError
 
+    templates = Jinja2Templates(directory="app/templates")
+
+    @app.exception_handler(exceptions.BaseInternalServiceException)
+    async def internalerror_exception_handler(
+        request: Request, exc: exceptions.BaseInternalServiceException
+    ):
+        response = templates.TemplateResponse(
+            "error_page.html", {"request": request, "message": str(exc)}
+        )
+        response.delete_cookie(key="session_id")
+        return response
+
     @app.exception_handler(TimeoutError)
     async def asyncio_timeouterror_handler(request: Request, exc: TimeoutError):
         return JSONResponse(
@@ -81,17 +94,6 @@ def add_exceptions(app: FastAPI) -> None:
             headers={"X-Error": "IntegrityError"},
         )
 
-    @app.exception_handler(exceptions.BaseInternalServiceException)
-    async def internalerror_exception_handler(
-        request: Request, exc: exceptions.BaseInternalServiceException
-    ):
-        _error_message = str(exc.error_message)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": str(exc)},
-            headers={"X-Error": _error_message},
-        )
-
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -111,8 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(routers.view_router)
     app.include_router(routers.line_router)
 
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
+    # app.mount("/static", StaticFiles(directory="app/static"), name="static")
     # Dependency injection
     from app import security
     from app.containers import Application
@@ -120,7 +121,7 @@ def create_app() -> FastAPI:
     container = Application()
     container.config.from_pydantic(settings)
     container.wire(
-        modules=[sys.modules[__name__], security, routers.auth, routers.line]
+        modules=[sys.modules[__name__], security, routers.auth, routers.line, routers.view]
     )
 
     app.container = container

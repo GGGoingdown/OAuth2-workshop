@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Type, Optional, Any, Iterable
+from typing import TypeVar, Generic, Type, Optional, Any, Iterable, Dict
 from tortoise.models import Model
 
 
@@ -30,3 +30,11 @@ class CRUDBase(Generic[ModelType]):
     async def get_all(self, **filter: Any) -> Iterable[ModelType]:
         _models = await self.model.get(**filter).all()
         return _models
+
+    async def update_with_select(self, update_schema: Dict, **filter: Any) -> int:
+        update_result = (
+            await self.model.filter(**filter)
+            .select_for_update()
+            .update(**update_schema)
+        )
+        return update_result

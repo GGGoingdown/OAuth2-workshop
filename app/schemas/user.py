@@ -1,4 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, validator
+from typing import Optional
+
+###
+from app.schemas.auth import LoginTypeEnum
 
 
 class UserMail(BaseModel):
@@ -35,3 +39,10 @@ class UserInDB(UserMail):
 
     class Config:
         orm_mode = True
+
+
+class UserInCache(BaseModel):
+    id: int
+    name: str
+    login_type: LoginTypeEnum
+    login_token: str
