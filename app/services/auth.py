@@ -1,5 +1,5 @@
-import urllib
 import abc
+import urllib.parse
 from loguru import logger
 from functools import lru_cache, cached_property
 from typing import Dict, Iterable, TypeVar, Generic, Optional

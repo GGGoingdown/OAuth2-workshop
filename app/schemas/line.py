@@ -138,6 +138,12 @@ class NotifySchema(BaseModel):
     )
 
 
+class NotifyRecordInCache(BaseModel):
+    create_at: datetime
+    name: str
+    message: str
+
+
 class NotifyResponse(BaseModel):
     status: int = Field(
         ..., description="200: Success;400: Bad request;401: Invalid access token"
@@ -157,4 +163,3 @@ class NotifyRevokeResponse(BaseModel):
         ...,
         description="200: Success・Access token valid;401: Invalid access token;Other: Processed over time or stopped",
     )
-

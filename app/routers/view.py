@@ -23,12 +23,15 @@ async def logout(
         Provide[Application.service.user_service]
     ),
 ):
+    logger.info("logout")
     if session_id:
         # Delete session id in cahce
         delete_result = await user_service.delete_user_in_cache(session_id=session_id)
         logger.debug(f"Delete session: {delete_result}")
 
-    return RedirectResponse(url="/login", status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    return RedirectResponse(
+        url="/login", status_code=status.HTTP_307_TEMPORARY_REDIRECT
+    )
 
 
 @router.get("/login")
@@ -44,7 +47,7 @@ async def login(
         cache_user = await user_service.get_user_in_cache(session_id=session_id)
         if cache_user:
             return RedirectResponse(
-                url="/notify", status_code=status.HTTP_301_MOVED_PERMANENTLY
+                url="/notify", status_code=status.HTTP_307_TEMPORARY_REDIRECT
             )
 
     response = templates.TemplateResponse("login.html", {"request": request})
@@ -68,4 +71,6 @@ async def notify_page(
             )
             return response
 
-    return RedirectResponse(url="/login", status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    return RedirectResponse(
+        url="/login", status_code=status.HTTP_307_TEMPORARY_REDIRECT
+    )

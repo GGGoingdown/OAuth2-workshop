@@ -1,9 +1,7 @@
-import urllib
 import json
 import aioredis
-from loguru import logger
-from typing import Union, Dict, Optional, Any
-from pydantic import ValidationError
+from typing import Iterable, Dict, Optional, Any, Tuple, List
+from pydantic import BaseModel, ValidationError
 from fastapi.encoders import jsonable_encoder
 
 ###
@@ -68,6 +66,27 @@ class LineNotifyAPIHandler(BaseLineAPIHandler):
         except ValidationError as e:
             raise exceptions.LineSchemaValidationException(message=e)
 
+    async def notify(
+        self,
+        access_token: str,
+        payload: LineSchema.NotifySchema,
+        url: str = "https://notify-api.line.me/api/notify",
+    ) -> Tuple[int, Dict]:
+        headers = {"Authorization": f"Bearer {access_token}", **self.base_headers}
+        status_code, rsp_json = await self._request_handler.post(
+            url=url, data=jsonable_encoder(payload), headers=headers
+        )
+        return status_code, rsp_json
+
+    async def revoke(
+        self, access_token: str, url: str = "https://notify-api.line.me/api/revoke"
+    ) -> Tuple[int, Dict]:
+        headers = {"Authorization": f"Bearer {access_token}", **self.base_headers}
+        status_code, rsp_json = await self._request_handler.post(
+            url=url, headers=headers
+        )
+        return status_code, rsp_json
+
 
 ###
 # Service
@@ -76,11 +95,10 @@ class LineCache:
     def __init__(self, redis_client: aioredis) -> None:
         self._redis_client = redis_client
 
+        self._notify_records_key = "notify-records"
+
     def _create_notify_key(self, user_id: int) -> str:
         return f"notify:user:{user_id}"
-
-    def _create_notify_records(self, user_id: int) -> str:
-        return f"notify-records:user:{user_id}"
 
     async def save_notify(self, user_id: int, payload: str) -> bool:
         key = self._create_notify_key(user_id=user_id)
@@ -93,6 +111,12 @@ class LineCache:
     async def delete_notify(self, user_id: int) -> int:
         key = self._create_notify_key(user_id=user_id)
         return await self._redis_client.delete(key)
+
+    async def save_notify_record(self, *payloads: Any) -> bool:
+        return await self._redis_client.rpush(self._notify_records_key, *payloads)
+
+    async def get_notify_record(self):
+        return await self._redis_client.lrange(self._notify_records_key, 0, -1)
 
 
 class LineService:
@@ -167,6 +191,9 @@ class LineService:
     async def filter_notify(self, user_id: int) -> Optional[models.LineNotify]:
         return await self._line_notify_repo.filter(user_id=user_id)
 
+    async def get_notify_records(self) -> Iterable[models.LineNotifyRecord]:
+        return await self._line_notify_record_repo.get_all_with_prefetch()
+
     async def get_notify_from_cache(
         self, user_id: int
     ) -> Optional[GenericSchema.AccessTokenResponse]:
@@ -178,6 +205,16 @@ class LineService:
 
     async def save_notify_to_cache(self, user_id: int, access_token: str) -> bool:
         payload = json.dumps(
-            GenericSchema.AccessTokenResponse(access_token=access_token)
+            jsonable_encoder(
+                GenericSchema.AccessTokenResponse(access_token=access_token)
+            )
         )
         return await self._line_cache.save_notify(user_id=user_id, payload=payload)
+
+    async def save_notify_record_to_cache(self, *records: BaseModel):
+        json_records = [json.dumps(jsonable_encoder(record)) for record in records]
+        return await self._line_cache.save_notify_record(*json_records)
+
+    async def get_notify_record_from_cache(self) -> List[str]:
+        records = await self._line_cache.get_notify_record()
+        return records

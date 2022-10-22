@@ -3,55 +3,27 @@
 
 <head>
     <meta charset="utf-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
-    <meta
-        name="description"
-        content=""
-    >
-    <meta
-        name="author"
-        content="Mark Otto, Jacob Thornton, and Bootstrap contributors"
-    >
-    <meta
-        name="generator"
-        content="Hugo 0.104.2"
-    >
-    <title>Signin Template · Bootstrap v5.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
+    <meta name="generator" content="Hugo 0.104.2">
+    <title>Notify</title>
 
-    <link
-        rel="canonical"
-        href="https://getbootstrap.com/docs/5.2/examples/sign-in/"
-    >
+    <link rel="canonical" href="https://getbootstrap.com/docs/5.2/examples/sign-in/">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
-    <script
-        src="https://code.jquery.com/jquery-3.6.1.min.js"
-        integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
-        crossorigin="anonymous"
-    ></script>
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"
+        integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
 
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css"
-        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
-        crossorigin="anonymous"
-    >
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
-    <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
         integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A=="
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"
-    />
-    <script
-        src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3"
-        crossorigin="anonymous"
-    ></script>
+        crossorigin="anonymous"></script>
 
 
     <style>
@@ -107,12 +79,6 @@
         }
     </style>
 
-
-    <!-- Custom styles for this template -->
-    <link
-        href="signin.css"
-        rel="stylesheet"
-    >
 </head>
 
 <body class="text-center">
@@ -120,45 +86,51 @@
     <main class="form-signin w-100 m-auto">
         <form>
             <h1 class="h3 mb-3 fw-normal">Hello {{ username }}</h1>
-            <a
-                class="btn btn-lg btn-danger"
-                href="{{ url_for('logout') }}"
-                role="button"
-            >Logout</a>
-            <button
-                type="button"
-                class="w-100 btn btn-lg btn-success"
-                id="notifyState"
-            >Notify</button>
+            <button type="button" class="w-100 btn btn-lg btn-danger" id="logout">Logout</button>
+            <button type="button" class="w-100 btn btn-lg btn-success" id="notifyState" disabled=true>Notify</button>
+            <button type="button" class="w-100 btn btn-lg btn-success" id="sendNotify" disabled=true>Send</button>
         </form>
+        <input id="message" type="text" class=" form-control" placeholder="message or image URL" aria-label="message"
+            aria-describedby="addon-wrapping">
+        <li></li>
     </main>
 </body>
 <script>
     $(document).ready(function () {
         checkNotifyState();
+        getNotifyRecords();
         $("#notifyState").click(notifyAuthHandler);
+        $("#sendNotify").click(sendNotify);
+        $("#logout").click(function () {
+            window.location.href = "/logout";
+        });
 
         function checkNotifyState() {
-            axios.get('/line-notify/state')
+            axios.get('/line-notify/status')
                 .then(function (response) {
                     // handle success
                     const rsp = response.data
-                    if (rsp.state) {
+                    console.log(`Status: ${rsp.status}`)
+                    if (rsp.status) {
                         // To revoked
                         $("#notifyState").removeClass("btn-success");
                         $("#notifyState").addClass("btn-warning");
                         $("#notifyState").html('Revoked');
+                        $('#sendNotify').prop('disabled', false)
                         return
                     }
                 })
                 .catch(function (error) {
                     // handle error
                     console.log(error);
-                    alert(`${error.data}`)
-                })
+                    alert(`${error.response.data}`)
+                }).finally(function () {
+                    $('#notifyState').prop('disabled', false)
+                });
         }
         function notifyAuthHandler() {
             const notifyState = $("#notifyState").html()
+            $('#notifyState').prop('disabled', true)
             if (notifyState === "Notify") {
                 console.log("Disable notify");
                 axios.get("/line-notify/oauth2/authorize")
@@ -171,25 +143,69 @@
                     .catch(function (error) {
                         // handle error
                         console.log(error);
-                        alert(`${error.data}`)
-                    })
-
-
+                        alert(`${error.response.data}`)
+                    }).finally(function () {
+                        $('#notifyState').prop('disabled', false)
+                    });
             } else {
                 console.log("Enable notify");
                 axios.delete("/line-notify/revoked")
                     .then(function (response) {
-                        // handle success
-                        const rsp = response.data
+                        $("#notifyState").removeClass("btn-warning");
+                        $("#notifyState").addClass("btn-success");
+                        $("#notifyState").html('Notify');
+                        $('#notifyState').prop('disabled', false)
+                        $('#sendNotify').prop('disabled', true)
                     })
                     .catch(function (error) {
                         // handle error
                         console.log(error);
-                        alert(`${error.data}`)
-                    })
+                        alert(`${error.response.data}`)
+                    }).finally(function () {
+                        $('#notifyState').prop('disabled', false)
+                    });
             }
-
         }
+        function sendNotify() {
+            var message = $("#message").val()
+            if (message === "") {
+                alert("Can not send empty message")
+                return
+            }
+            console.log(`Message ${message}`)
+            axios.post("/line-notify/message", {
+                message: message
+            })
+                .then(function (response) {
+                    const data = response.data;
+                    var showMessage = `<p class="h3">${data.create_at} - ${data.name} - ${data.message}</p>`;
+                    $("li").append(showMessage);
+                    $("#message").val('');
+                })
+                .catch(function (error) {
+                    // handle error
+                    console.log(error);
+                    alert(`${error.response.data}`)
+                })
+        }
+
+        function getNotifyRecords() {
+            axios.get("/line-notify/message")
+                .then(function (response) {
+                    const data = response.data;
+                    data.forEach(element => {
+                        console.log(element)
+                        var showMessage = `<p class="h3">${element.create_at} - ${element.name} - ${element.message}</p>`;
+                        $("li").append(showMessage);
+                    });
+                })
+                .catch(function (error) {
+                    // handle error
+                    console.log(error);
+                    alert(`${error.response.data}`)
+                })
+        }
+
 
     });
 </script>
